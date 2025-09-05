@@ -1,0 +1,228 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>WITH RESPECT TO MEHMED GRESIYENKO 2025</title>
+<style>
+body {
+    font-family: sans-serif;
+    background: white;
+    color: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    margin: 0;
+}
+h2 {
+    text-align: center;
+    font-size: 18px;
+    margin: 8px 0;
+}
+#pairs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 8px 0;
+}
+button.pair-btn {
+    padding: 8px 12px;
+    margin: 4px;
+    border: none;
+    border-radius: 6px;
+    background: #eee;
+    cursor: pointer;
+    font-size: 14px;
+    flex: 0 0 auto;
+}
+button.pair-btn.active {
+    background: #333;
+    color: #fff;
+}
+#chart {
+    max-width: 95%;
+    max-height: 300px;
+}
+#numbers {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    overflow-x: auto;
+    margin: 10px 0;
+}
+.num-box {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 2px;
+    color: white;
+    font-size: 16px;
+    border-radius: 6px;
+    flex: 0 0 auto;
+}
+#price {
+    font-size: 28px;
+    background: #999;
+    color: #fff;
+    padding: 10px 20px;
+    margin-top: 10px;
+    border-radius: 8px;
+    min-width: 200px;
+}
+#tick-numbers {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    max-width: 250px;
+}
+#tick-numbers div {
+    width: 20px;
+    text-align: center;
+    font-size: 12px;
+    margin: 1px;
+}
+</style>
+</head>
+<body>
+<h2>WITH RESPECT TO MEHMED GRESIYENKO 2025</h2>
+<div id="pairs">
+    <button class="pair-btn active" onclick="selectPair('R_100')">Volatility 100</button>
+    <button class="pair-btn" onclick="selectPair('R_75')">Volatility 75</button>
+    <button class="pair-btn" onclick="selectPair('R_50')">Volatility 50</button>
+    <button class="pair-btn" onclick="selectPair('R_25')">Volatility 25</button>
+    <button class="pair-btn" onclick="selectPair('R_10')">Volatility 10</button>
+</div>
+<canvas id="chart"></canvas>
+<div id="tick-numbers"></div>
+<div id="numbers"></div>
+<div id="price">0.00</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let ws;
+let prices = [];
+let digits = [];
+let currentPair = 'R_100';
+const ctx = document.getElementById('chart').getContext('2d');
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: Array.from({length: 20}, (_, i) => (i + 1).toString()),
+        datasets: [{
+            label: '',
+            data: Array(20).fill(null),
+            borderColor: 'black',
+            backgroundColor: 'rgba(0,0,0,0.05)',
+            pointBackgroundColor: Array(20).fill('black'),
+            pointRadius: 8,
+            pointHoverRadius: 10
+        }]
+    },
+    options: {
+        plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+        },
+        scales: { y: { beginAtZero: false } },
+        animation: false
+    },
+    plugins: [{
+        afterDatasetsDraw(chart) {
+            const { ctx, data } = chart;
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            const meta = chart.getDatasetMeta(0);
+            meta.data.forEach((point, index) => {
+                if (index >= digits.length) return;
+                const digit = digits[index];
+                const color = point.options.backgroundColor === 'blue' ? '#00f' : 
+                              point.options.backgroundColor === 'red' ? '#f00' : '#666';
+                ctx.fillStyle = color;
+                ctx.fillRect(point.x - 15, point.y - 25, 30, 18);
+                ctx.fillStyle = '#fff';
+                ctx.fillText(digit, point.x, point.y - 12);
+            });
+        }
+    }]
+});
+
+function selectPair(pair) {
+    currentPair = pair;
+    document.querySelectorAll('.pair-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    if (ws) ws.close();
+    prices = [];
+    digits = [];
+    document.getElementById('numbers').innerHTML = '';
+    startWS();
+}
+
+function startWS() {
+    ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+    ws.onopen = () => {
+        ws.send(JSON.stringify({ticks: currentPair, subscribe: 1}));
+    };
+    ws.onmessage = (msg) => {
+        const data = JSON.parse(msg.data);
+        if (data.tick) {
+            const price = parseFloat(data.tick.quote);
+            prices.push(price);
+            if (prices.length > 20) prices.shift();
+
+            const priceStr = price.toFixed(2).replace(',', '');
+            const parts = priceStr.split('.');
+            const intPart = parts[0];
+            const lastTwo = intPart.slice(-2);
+
+            digits.push(lastTwo);
+            if (digits.length > 20) digits.shift();
+
+            // fiyat kutusu rengi
+            let priceColor = '#999';
+            if (prices.length > 1) {
+                if (price > prices[prices.length - 2]) {
+                    priceColor = 'green';
+                } else if (price < prices[prices.length - 2]) {
+                    priceColor = 'red';
+                }
+            }
+            document.getElementById('price').style.background = priceColor;
+            document.getElementById('price').innerText = price.toLocaleString('de-DE');
+
+            // sayıları tek satırda kutucukla göster
+            document.getElementById('numbers').innerHTML = '';
+            for (let i = 0; i < digits.length; i++) {
+                const box = document.createElement('div');
+                box.className = 'num-box';
+                if (i > 0 && prices[i] > prices[i - 1]) {
+                    box.style.background = 'blue';
+                } else if (i > 0 && prices[i] < prices[i - 1]) {
+                    box.style.background = 'red';
+                } else {
+                    box.style.background = '#666';
+                }
+                box.innerText = digits[i];
+                document.getElementById('numbers').appendChild(box);
+            }
+
+            // grafik güncelle
+            chart.data.datasets[0].data = prices;
+            chart.data.datasets[0].pointBackgroundColor = prices.map((p, i) => {
+                if (i > 0 && p > prices[i - 1]) return 'blue';
+                if (i > 0 && p < prices[i - 1]) return 'red';
+                return 'gray';
+            });
+            chart.data.labels = Array.from({length: prices.length}, (_, i) => (i + 1).toString());
+            chart.update();
+        }
+    };
+}
+startWS();
+</script>
+</body>
+</html>
